@@ -1,79 +1,74 @@
 const express = require('express');
-const mysql = require('mysql');
+const knex = require('knex');
 
 const app = express();
 const port = 3000;
 
-// MySQL connection configuration
-const connection = mysql.createConnection({
-    host: '127.0.0.1',
-    port: '3306',
-    user: 'root',
-    password: 'Osaid@0599886818',
-    database: 'mydb'
+// Knex configuration
+const db = knex({
+    client: 'mysql',
+    connection: {
+        host: '127.0.0.1',
+        port: '3306',
+        user: 'root',
+        password: 'Osaid@0599886818',
+        database: 'mydb'
+    }
 });
-
-// Connect to MySQL
-connection.connect();
 
 // Middleware to parse JSON bodies
 app.use(express.json());
 
 // Routes
 // GET all users
-app.get('/users', (req, res) => {
-    connection.query('SELECT * FROM users', (err, results) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-        }
-        res.json(results);
-    });
+app.get('/users', async (req, res) => {
+    try {
+        const users = await db.select().from('users');
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // POST a new user
-// POST a new user
-app.post('/users', (req, res) => {
+app.post('/users', async (req, res) => {
     const { name, age } = req.body;
     if (!name) {
         res.status(400).json({ error: "Name is required" });
         return;
     }
-    connection.query('INSERT INTO users (name, age) VALUES (?, ?)', [name, age], (err, result) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-        }
+
+    try {
+        await db('users').insert({ name, age });
         res.status(201).send('User added successfully');
-    });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
-
 // PUT update a user
-// PUT update a user
-app.put('/users/:id', (req, res) => {
+app.put('/users/:id', async (req, res) => {
     const userId = req.params.id;
     const { name, age } = req.body;
-    connection.query('UPDATE users SET name = ?, age = ? WHERE id = ?', [name, age, userId], (err, result) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-        }
+
+    try {
+        await db('users').where({ id: userId }).update({ name, age });
         res.send('User updated successfully');
-    });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
-
 // DELETE a user
-app.delete('/users/:id', (req, res) => {
+app.delete('/users/:id', async (req, res) => {
     const userId = req.params.id;
-    connection.query('DELETE FROM users WHERE id = ?', [userId], (err, result) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-        }
+
+    try {
+        await db('users').where({ id: userId }).del();
         res.send('User deleted successfully');
-    });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // Start the server
