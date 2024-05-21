@@ -2,6 +2,7 @@ const express = require('express');
 const knex = require('knex');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { body, validationResult } = require('express-validator');
 
 const app = express();
 const port = 3000;
@@ -37,13 +38,17 @@ const authMiddleware = (req, res, next) => {
     }
 };
 
-// Sign-up route
-app.post('/signup', async (req, res) => {
-    const { name, password } = req.body;
-    if (!name || !password) {
-        return res.status(400).json({ error: 'Name and password are required.' });
+// Sign-up route with validation
+app.post('/signup', [
+    body('name').isString().isLength({ min: 1 }).trim().escape(),
+    body('password').isLength({ min: 6 }).trim().escape()
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
     }
 
+    const { name, password } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
 
     try {
@@ -54,12 +59,17 @@ app.post('/signup', async (req, res) => {
     }
 });
 
-// Login route
-app.post('/login', async (req, res) => {
-    const { name, password } = req.body;
-    if (!name || !password) {
-        return res.status(400).json({ error: 'Name and password are required.' });
+// Login route with validation
+app.post('/login', [
+    body('name').isString().isLength({ min: 1 }).trim().escape(),
+    body('password').isLength({ min: 6 }).trim().escape()
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
     }
+
+    const { name, password } = req.body;
 
     try {
         const user = await db('users').where({ name }).first();
@@ -89,13 +99,17 @@ app.get('/users', authMiddleware, async (req, res) => {
     }
 });
 
-// POST a new user (public route)
-app.post('/users', authMiddleware, async (req, res) => {
-    const { name, password } = req.body;
-    if (!name || !password) {
-        return res.status(400).json({ error: 'Name and password are required.' });
+// POST a new user (protected route) with validation
+app.post('/users', authMiddleware, [
+    body('name').isString().isLength({ min: 1 }).trim().escape(),
+    body('password').isLength({ min: 6 }).trim().escape()
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
     }
 
+    const { name, password } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
 
     try {
@@ -106,11 +120,18 @@ app.post('/users', authMiddleware, async (req, res) => {
     }
 });
 
-// PUT update a user (protected route)
-app.put('/users/:id', authMiddleware, async (req, res) => {
+// PUT update a user (protected route) with validation
+app.put('/users/:id', authMiddleware, [
+    body('name').isString().isLength({ min: 1 }).trim().escape(),
+    body('password').isLength({ min: 6 }).trim().escape()
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
     const userId = req.params.id;
     const { name, password } = req.body;
-
     const hashedPassword = await bcrypt.hash(password, 10);
 
     try {
